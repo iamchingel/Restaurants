@@ -1,0 +1,6 @@
+framework module Pods_RestaurantsInALocation {
+  umbrella header "Pods-RestaurantsInALocation-umbrella.h"
+
+  export *
+  module * { export * }
+}
