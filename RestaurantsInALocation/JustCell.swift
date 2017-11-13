@@ -11,6 +11,10 @@ import UIKit
 class JustCell: UITableViewCell {
 
     @IBOutlet weak var img: UIImageView!
+    @IBOutlet weak var rating: UILabel!
+    @IBOutlet weak var restaurantName: UILabel!
+    @IBOutlet weak var backgroundCardView: UIView!
+    @IBOutlet weak var restaurantLocality: UILabel!
     
     override func awakeFromNib() {
         super.awakeFromNib()

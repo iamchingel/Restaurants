@@ -7,22 +7,105 @@
 //
 
 import UIKit
-import SwiftyJSON
+import SDWebImage
 
 
 class ViewController: UIViewController{
     
     @IBOutlet weak var table: UITableView!
+    @IBOutlet weak var sortByButton: UIButton!
+    @IBOutlet var sortingList: UIView!
+    
+    
     var restaurants = [Restaurant]()
+    var start = 0
+    var sort = "rating"
+    var order = "desc"
+    
+    static var navigationTitleButton = UIButton(type: .system)
+    static var locationLatitude = "40.742051"
+    static var locationLongitude = "-74.004821"
     
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        getListOfRestaurants()
+        getListOfRestaurants(start : start, lat: ViewController.locationLatitude, long: ViewController.locationLongitude)
+        createNavigationTitleButton()
+    
     }
-
-    func getListOfRestaurants() {
-        let request = NSMutableURLRequest(url: URL(string: "https://developers.zomato.com/api/v2.1/geocode?lat=18.922045&lon=72.833237")!)
+    
+    override func viewDidAppear(_ animated: Bool) {
+        print(ViewController.locationLatitude,ViewController.locationLongitude,"🍋")
+        start = 0
+        restaurants = [Restaurant]()
+        table.reloadData()
+        getListOfRestaurants(start: start, lat: ViewController.locationLatitude, long: ViewController.locationLongitude)
+    }
+    
+    @IBAction func searchAfterSorting(_ sender: Any) {
+        print(restaurants.count)
+        start = 0
+        restaurants = [Restaurant]()
+        table.reloadData()
+        getListOfRestaurants(start: start, lat: ViewController.locationLatitude, long: ViewController.locationLongitude)
+    }
+    
+    @IBAction func sortingOptionTapped(_ sender: UIButton) {
+        sortByButton.setTitle(sender.currentTitle, for: .normal)
+        
+        if sender.currentTitle! == "Rating High to Low" {
+            sort = "rating"
+            order = "desc"
+        }
+        else if sender.currentTitle! == "Price High to Low" {
+            sort = "cost"
+            order = "desc"
+        }
+        else if sender.currentTitle! == "Rating Low to High" {
+            sort = "rating"
+            order = "asc"
+        }
+        else if sender.currentTitle! == "Price Low to High" {
+            sort = "cost"
+            order = "asc"
+        }
+        
+        UIView.animate(withDuration: 0.2) {
+            self.sortingList.removeFromSuperview()
+        }
+    }
+    
+    
+    @IBAction func sortBy(_ sender: Any) {
+        let centerX = (sortByButton.frame.origin.x + (sortByButton.frame.width/2))
+        let centerY = (sortByButton.frame.height + (sortingList.frame.height/2))
+        
+        UIView.animate(withDuration: 0.2) {
+            self.view.addSubview(self.sortingList)
+            self.sortingList.center = CGPoint(x: centerX, y: centerY)
+        }
+    }
+    
+    func createNavigationTitleButton() {
+        ViewController.navigationTitleButton.setImage(UIImage(named: "markerIcon"), for: .normal)
+        ViewController.navigationTitleButton.setTitle("Location will be displayed here", for: .normal)
+        ViewController.navigationTitleButton.setTitleColor(UIColor.white, for: .normal)
+        ViewController.navigationTitleButton.titleLabel?.font = UIFont(name: "Avenir Next", size: 16)
+        ViewController.navigationTitleButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
+        ViewController.navigationTitleButton.addTarget(self, action: #selector(self.selectLocation(button:)), for: .touchUpInside)
+        
+        self.navigationItem.titleView = ViewController.navigationTitleButton
+    }
+    
+    @objc func selectLocation(button: UIButton) {
+        performSegue(withIdentifier: "selectLocation", sender: self)
+    }
+    
+    
+    func getListOfRestaurants(start: Int, lat: String, long: String) {
+        print("Finding restaurants")
+        self.start += 20
+        let request = NSMutableURLRequest(url: URL(string: "https://developers.zomato.com/api/v2.1/search?start=\(start)&lat=\(lat)&lon=\(long)&sort=\(sort)&order=\(order)")!)
         request.addValue("107aa037e7df67d13089a966c701acc0", forHTTPHeaderField: "user-key")
         
         
@@ -50,7 +133,7 @@ class ViewController: UIViewController{
                 return
             }
 
-            guard let nearbyRes = parsedResult["nearby_restaurants"] as? [AnyObject] else {
+            guard let nearbyRes = parsedResult["restaurants"] as? [AnyObject] else {
                 print("Could not get restaurant list")
                 return
             }
@@ -117,7 +200,7 @@ class ViewController: UIViewController{
                     return
                 }
 //                10. image
-                guard let image = rest["featured_image"]  as? String else {
+                guard let imageURLString = rest["featured_image"]  as? String else {
                     print("Featured Image not found")
                     return
                 }
@@ -148,7 +231,7 @@ class ViewController: UIViewController{
                     return
                 }
                 
-                self.restaurants.append(Restaurant(id: resID, name: name, address: address, locality: locality, latitude: latitude, longitude: longitude, cuisines: cuisines, costForTwo: averageCostForTwo, currency: currency, rating: aggregateRating, ratingText: ratingText, ratingColor: ratingColor, votes: votes, image: image))
+                self.restaurants.append(Restaurant(id: resID, name: name, address: address, locality: locality, latitude: latitude, longitude: longitude, cuisines: cuisines, costForTwo: averageCostForTwo, currency: currency, rating: aggregateRating, ratingText: ratingText, ratingColor: ratingColor, votes: votes, imageURLString: imageURLString))
     
                 DispatchQueue.main.async {
                     self.table.reloadData()
@@ -156,41 +239,70 @@ class ViewController: UIViewController{
             }
         }
         task.resume()
-        
 
     }
     
 
 }
+
 extension ViewController : UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        print(restaurants.count,"🥤")
-
         return restaurants.count
     }
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! JustCell
         let restaurant = restaurants[indexPath.row]
+        cell.img.image = nil
+        let url = URL(string : restaurant.imageURLString!)
+        
+        cell.backgroundCardView.backgroundColor = UIColor.white
+        cell.contentView.backgroundColor = UIColor(red: 240/255.0, green: 240/255.0, blue: 240/255.0, alpha: 1.0)
+        cell.backgroundCardView.layer.cornerRadius = 5.0
+        cell.layer.masksToBounds = false
+        cell.backgroundCardView.layer.shadowColor = UIColor.black.withAlphaComponent(0.2).cgColor
+        cell.backgroundCardView.layer.shadowOffset = CGSize(width: 0, height: 0)
+        cell.backgroundCardView.layer.shadowOpacity = 0.8
+        
+        
+        if restaurant.ratingText == "Not rated" {
+            cell.rating.text = "New"
+        }
+        else {
+            cell.rating.text = restaurant.rating
+        }
+        
+        cell.rating.backgroundColor = hexStringToUIColor(hex: restaurant.ratingColor)
+        cell.rating.layer.cornerRadius = 3.0
+        cell.rating.layer.masksToBounds = true
+        cell.restaurantName.text = restaurant.name
+        cell.restaurantLocality.text = restaurant.address
 
-        let url = URL(string : restaurant.image!)
-        
-        URLSession.shared.dataTask(with: url!) { (data, response, error) in
-            if error == nil {
-                DispatchQueue.main.async {
-                    cell.img.image = UIImage(data : data!)
-                }
-            }
-        }.resume()
-        
-        
+        cell.img.sd_setImage(with: url, placeholderImage: nil, options: [.continueInBackground,.progressiveDownload])
         
         return cell
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        return 200
+        return 260
     }
-
+    
+    func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+//        DispatchQueue.main.async {
+//            cell.alpha = 0
+//            UIView.animate(withDuration: 0.5) {
+//                cell.alpha = 1.0
+//            }
+//        }
+        let lastRestaurant = restaurants.count - 1
+        if indexPath.row == lastRestaurant {
+            getListOfRestaurants(start: start, lat: ViewController.locationLatitude, long: ViewController.locationLongitude)
+        }
+    }
+}
+extension UINavigationController {
+    open override var preferredStatusBarStyle: UIStatusBarStyle {
+        return .lightContent
+    }
 }
 
 

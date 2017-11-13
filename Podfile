@@ -7,5 +7,8 @@ target 'RestaurantsInALocation' do
 
   # Pods for RestaurantsInALocation
 pod 'SwiftyJSON'
+pod 'SDWebImage'
+pod 'SDWebImage/WebP'
+pod 'GooglePlaces'
 
 end
